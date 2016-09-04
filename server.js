@@ -43,10 +43,11 @@ var getTracks = function(artist) {
     //need to make parallel
     //for each related artist, take the id and make the call to spotify for top tracks
     //, then check to see if its gone through all of them (checkComplete)
+    
     unirest.get('https://api.spotify.com/v1/artists/'+artist.id+'/top-tracks?&country=US')
         .end(function(response) {
             artist.tracks = response.body.tracks;
-            console.log(artist.tracks);
+           // console.log(artist.tracks);
         });
 };
 
@@ -57,7 +58,7 @@ var getRelated = function(artist) {
                 //res.json(artist.related);
                 for (var key in artist.related) {
                     if (checkComplete(artist.related) == true) {
-                        res.json(artist);
+                       res.json(artist);
                     }
                     else {
                         getTracks(artist.related[key]);
@@ -69,7 +70,6 @@ var getRelated = function(artist) {
     searchReq.on('end', function(item) {
         var artist = item.artists.items[0];
         getRelated(artist);
-        
 
         //https://api.spotify.com/v1/artists/{id}/top-tracks
         //use artist ID from artist.related object
