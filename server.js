@@ -21,33 +21,33 @@ var app = express();
 app.use(express.static('public'));
 complete = 0;
 
-var checkComplete = function(artist) {
+var checkComplete = function(artist, res) {
     complete+=1;
     console.log(complete);
-    if (complete === artist.length) {
-        console.log('got to right before json');
-        return true;
-    }
-    else {
-        return false;
+    if (complete === artist.related.length) {
+        return res.json(artist);
     }
 };
 app.get('/search/:name', function(req, res) {
+    complete = 0;
     var searchReq = getFromApi('search', {
         q: req.params.name,
         limit: 1,
         type: 'artist'
     });
 
-var getTracks = function(artist) {
+globalTracks = [];
+
+var getTracks = function(artist, i, cb) {
     //need to make parallel
     //for each related artist, take the id and make the call to spotify for top tracks
     //, then check to see if its gone through all of them (checkComplete)
     
     unirest.get('https://api.spotify.com/v1/artists/'+artist.id+'/top-tracks?&country=US')
         .end(function(response) {
-            artist.tracks = response.body.tracks;
-           // console.log(artist.tracks);
+            tracks = response.body.tracks;
+            //globalTracks.push(artist.tracks);
+            cb(tracks, i); 
         });
 };
 
@@ -55,14 +55,14 @@ var getRelated = function(artist) {
     unirest.get('https://api.spotify.com/v1/artists/'+artist.id+'/related-artists')
             .end(function(response) {   
                 artist.related = response.body.artists;
+                console.log(artist.related);
                 //res.json(artist.related);
-                for (var key in artist.related) {
-                    if (checkComplete(artist.related) == true) {
-                       res.json(artist);
-                    }
-                    else {
-                        getTracks(artist.related[key]);
-                    }
+                for (var i=0; i<artist.related.length; i++) {
+                    getTracks(artist.related[i], i, function(tracks, i) {
+                        artist.related[i].tracks = tracks;
+                        console.log(artist.related[i]);
+                        checkComplete(artist, res);
+                    });
                 }
             });
 };
@@ -70,8 +70,6 @@ var getRelated = function(artist) {
     searchReq.on('end', function(item) {
         var artist = item.artists.items[0];
         getRelated(artist);
-
-        //https://api.spotify.com/v1/artists/{id}/top-tracks
         //use artist ID from artist.related object
         //if request is succesful, set tracks attribute of each
         //related artist to item.tracks, where item is object
